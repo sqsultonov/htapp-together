@@ -6,7 +6,6 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import { StudentProvider } from "@/lib/student-context";
 import { InstructorProvider } from "@/lib/instructor-context";
 import { BrandingProvider } from "@/lib/branding-context";
-import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Lessons from "./pages/Lessons";
@@ -25,8 +24,6 @@ const App = () => (
       <StudentProvider>
         <InstructorProvider>
           <TooltipProvider>
-            <Toaster />
-            <Sonner />
             <HashRouter>
               <Routes>
                 <Route path="/" element={<Login />} />
@@ -41,6 +38,8 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </HashRouter>
+            <Toaster />
+            <Sonner />
           </TooltipProvider>
         </InstructorProvider>
       </StudentProvider>
