@@ -19,10 +19,18 @@ function isActiveLike(value: unknown): boolean {
   return Boolean(value);
 }
 
+/**
+ * =====================================================
+ * DEFAULT SINFLARNI SEEDING QILISH
+ * =====================================================
+ * 
+ * Agar grade_classes jadvali bo'sh bo'lsa, 1-11 gacha
+ * standart sinflarni avtomatik yaratadi.
+ * Har ikkala muhitda (Electron va brauzer) ishlaydi.
+ * 
+ * =====================================================
+ */
 async function seedDefaultGradeClassesIfEmpty(): Promise<void> {
-  // Faqat Electron (offlayn) muhitida seed qilamiz
-  if (!(db as any).isElectron) return;
-
   try {
     const { data } = await db.from("grade_classes").select("id").limit(1);
     if (data && (data as any[]).length > 0) return;
