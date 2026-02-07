@@ -3,9 +3,8 @@
 ## 🚀 BITTA KOMANDA BILAN BUILD (JUDA OSON!)
 
 ### 1-qadam: Loyihani yuklab oling
-- Lovable'da: **Settings → Export → Download as ZIP**
-- ZIP faylni oching va papkaga chiqaring
-- VSCode'da papkani oching
+- Git'dan `git clone ...` qiling **yoki** ZIP qilib yuklab oling
+- Papkani oching (VSCode tavsiya)
 
 ### 2-qadam: BUILD QILING
 

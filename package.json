@@ -5,7 +5,6 @@
   "main": "electron/main.cjs",
   "author": "HTApp Team",
   "license": "MIT",
-  
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -31,7 +30,10 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         }
       ],
       "icon": "public/favicon.ico"
@@ -44,11 +46,15 @@
       "installerHeaderIcon": "public/favicon.ico"
     },
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "icon": "public/favicon.ico"
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "icon": "public/favicon.ico"
     }
   },
@@ -83,6 +89,7 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@supabase/supabase-js": "^2.93.3",
     "@tanstack/react-query": "^5.83.0",
+    "@testing-library/jest-dom": "^6.9.1",
     "better-sqlite3": "^9.2.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -91,6 +98,7 @@
     "dompurify": "^3.3.1",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
+    "jsdom": "^28.0.0",
     "lucide-react": "^0.462.0",
     "mammoth": "^1.11.0",
     "next-themes": "^0.3.0",
@@ -105,6 +113,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
+    "vitest": "^4.0.18",
     "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },

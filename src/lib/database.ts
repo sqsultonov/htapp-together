@@ -33,6 +33,48 @@ function stringifyJsonFields(data: any, fields: string[]): any {
   return stringified;
 }
 
+// SQLite bind() only supports: numbers, strings, bigints, buffers, null.
+// Normalize common JS values (boolean/Date/object) to safe bindable values.
+function normalizeSqliteValue(value: any): any {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'boolean') return value ? 1 : 0;
+  if (typeof value === 'number' || typeof value === 'string' || typeof value === 'bigint') return value;
+  if (value instanceof Date) return value.toISOString();
+
+  // Arrays / objects: store as JSON string (most of our “complex” fields are JSON columns)
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function normalizeSqliteBindings<TData extends Record<string, any>>(data: TData): TData {
+  const normalized: any = { ...data };
+  for (const key of Object.keys(normalized)) {
+    normalized[key] = normalizeSqliteValue(normalized[key]);
+  }
+  return normalized;
+}
+
+function parseBooleanLikeFields(row: any): any {
+  if (!row) return row;
+  const parsed: any = { ...row };
+  for (const key of Object.keys(parsed)) {
+    const v = parsed[key];
+    if (v === 0 || v === 1) {
+      if (key === 'completed' || key.startsWith('is_') || key.startsWith('can_') || key.endsWith('_enabled')) {
+        parsed[key] = v === 1;
+      }
+    }
+  }
+  return parsed;
+}
+
+function parseSQLiteRow(row: any, jsonFields: string[]): any {
+  return parseBooleanLikeFields(parseJsonFields(row, jsonFields));
+}
+
 // Database interface matching Supabase-like API
 interface QueryResult<T> {
   data: T | null;
@@ -178,12 +220,13 @@ class SQLiteQueryBuilder<T> implements QueryBuilder<T> {
 
     for (const cond of this.conditions) {
       if (cond.op === 'IN') {
-        const placeholders = cond.value.map(() => '?').join(', ');
+        const normalizedValues = (cond.value || []).map((v: any) => normalizeSqliteValue(v));
+        const placeholders = normalizedValues.map(() => '?').join(', ');
         parts.push(`${cond.column} IN (${placeholders})`);
-        params.push(...cond.value);
+        params.push(...normalizedValues);
       } else {
         parts.push(`${cond.column} ${cond.op} ?`);
-        params.push(cond.value);
+        params.push(normalizeSqliteValue(cond.value));
       }
     }
 
@@ -205,58 +248,58 @@ class SQLiteQueryBuilder<T> implements QueryBuilder<T> {
         const { sql: whereSql, params } = this.buildWhereClause();
         const sql = `SELECT ${this.selectColumns} FROM ${this.table}${whereSql}${this.buildOrderClause()}${this.limitCount ? ` LIMIT ${this.limitCount}` : ''}`;
         const result = await api.query(sql, params);
-        
+
         if (result.error) {
           return { data: null, error: result.error };
         }
-        
-        const parsed = result.data.map((row: any) => parseJsonFields(row, jsonFields));
+
+        const parsed = (result.data || []).map((row: any) => parseSQLiteRow(row, jsonFields));
         return { data: parsed, error: null };
       }
 
       if (this.operation === 'insert') {
         const items = Array.isArray(this.insertData) ? this.insertData : [this.insertData];
         const results: T[] = [];
-        
+
         for (const item of items) {
-          const processed = stringifyJsonFields(item, jsonFields);
+          const processed = normalizeSqliteBindings(stringifyJsonFields(item, jsonFields));
           const result = await api.insert(this.table, processed);
           if (result.error) {
             return { data: null, error: result.error };
           }
-          results.push(parseJsonFields(result.data, jsonFields));
+          results.push(parseSQLiteRow(result.data, jsonFields));
         }
-        
+
         return { data: results, error: null };
       }
 
       if (this.operation === 'update') {
-        const processed = stringifyJsonFields(this.updateData, jsonFields);
-        
+        const processed = normalizeSqliteBindings(stringifyJsonFields(this.updateData, jsonFields));
+
         // Build where object from conditions
         const where: Record<string, any> = {};
         for (const cond of this.conditions) {
           if (cond.op === '=') {
-            where[cond.column] = cond.value;
+            where[cond.column] = normalizeSqliteValue(cond.value);
           }
         }
-        
+
         const result = await api.update(this.table, processed, where);
         if (result.error) {
           return { data: null, error: result.error };
         }
-        
-        return { data: [parseJsonFields(result.data, jsonFields)], error: null };
+
+        return { data: [parseSQLiteRow(result.data, jsonFields)], error: null };
       }
 
       if (this.operation === 'delete') {
         const where: Record<string, any> = {};
         for (const cond of this.conditions) {
           if (cond.op === '=') {
-            where[cond.column] = cond.value;
+            where[cond.column] = normalizeSqliteValue(cond.value);
           }
         }
-        
+
         await api.delete(this.table, where);
         return { data: [], error: null };
       }

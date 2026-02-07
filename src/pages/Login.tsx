@@ -53,7 +53,7 @@ export default function Login() {
   // Agar keyinchalik ushbu shortcutlarni olib tashlash kerak bo'lsa,
   // quyidagi useEffect blokini o'chiring yoki izohga oling.
   // Admin: Ctrl + Shift + A
-  // Rahbar (Instructor): Ctrl + Shift + I
+  // Rahbar (Instructor): Ctrl + Shift + R
   // =====================================================
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -62,8 +62,8 @@ export default function Login() {
         e.preventDefault();
         setShowAdminModal(true);
       }
-      // Rahbar (Instructor) panel uchun: Ctrl + Shift + I
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i") {
+      // Rahbar (Instructor) panel uchun: Ctrl + Shift + R
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "r") {
         e.preventDefault();
         setShowInstructorModal(true);
       }
@@ -259,7 +259,7 @@ return (
                 Admin: <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Shift</kbd> + <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">A</kbd>
               </p>
               <p>
-                Rahbar: <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Shift</kbd> + <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">I</kbd>
+                Rahbar: <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Shift</kbd> + <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">R</kbd>
               </p>
             </div>
             {/* KEYBOARD SHORTCUTS MA'LUMOTI OXIRI */}
