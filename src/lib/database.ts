@@ -125,53 +125,281 @@ const jsonFieldsMap: Record<string, string[]> = {
 
 /**
  * =====================================================
- * MOCK QUERY BUILDER - Brauzer uchun
+ * LOCALSTORAGE QUERY BUILDER - Brauzer uchun
  * =====================================================
  * 
- * Brauzerda SQLite mavjud emas, shuning uchun bo'sh natijalar
- * qaytaradigan mock query builder ishlatiladi.
+ * Brauzerda SQLite mavjud emas, shuning uchun localStorage
+ * orqali ma'lumotlarni saqlash va o'qish amalga oshiriladi.
+ * Bu brauzer preview'da ham sinflar va ma'lumotlar saqlanishini
+ * ta'minlaydi.
  * 
  * =====================================================
  */
-class MockQueryBuilder<T> implements QueryBuilder<T> {
+class LocalStorageQueryBuilder<T> implements QueryBuilder<T> {
   private table: string;
+  private operation: 'select' | 'insert' | 'update' | 'delete' = 'select';
+  private selectColumns: string = '*';
+  private insertData: any = null;
+  private updateData: any = null;
+  private conditions: { column: string; op: string; value: any }[] = [];
+  private orderByArr: { column: string; ascending: boolean }[] = [];
+  private limitCount: number | null = null;
 
   constructor(table: string) {
     this.table = table;
   }
 
-  select(): this { return this; }
-  insert(): this { return this; }
-  update(): this { return this; }
-  delete(): this { return this; }
-  eq(): this { return this; }
-  neq(): this { return this; }
-  gt(): this { return this; }
-  gte(): this { return this; }
-  lt(): this { return this; }
-  lte(): this { return this; }
-  like(): this { return this; }
-  ilike(): this { return this; }
-  in(): this { return this; }
-  contains(): this { return this; }
-  order(): this { return this; }
-  limit(): this { return this; }
+  private getStorageKey(): string {
+    return `offlinedb_${this.table}`;
+  }
+
+  private getData(): T[] {
+    try {
+      const raw = localStorage.getItem(this.getStorageKey());
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private setData(data: T[]): void {
+    localStorage.setItem(this.getStorageKey(), JSON.stringify(data));
+  }
+
+  select(columns: string = '*'): this {
+    this.selectColumns = columns;
+    if (this.operation === 'select') {
+      this.operation = 'select';
+    }
+    return this;
+  }
+
+  insert(data: Partial<T> | Partial<T>[]): this {
+    this.operation = 'insert';
+    this.insertData = data;
+    return this;
+  }
+
+  update(data: Partial<T>): this {
+    this.operation = 'update';
+    this.updateData = data;
+    return this;
+  }
+
+  delete(): this {
+    this.operation = 'delete';
+    return this;
+  }
+
+  eq(column: string, value: any): this {
+    this.conditions.push({ column, op: '=', value });
+    return this;
+  }
+
+  neq(column: string, value: any): this {
+    this.conditions.push({ column, op: '!=', value });
+    return this;
+  }
+
+  gt(column: string, value: any): this {
+    this.conditions.push({ column, op: '>', value });
+    return this;
+  }
+
+  gte(column: string, value: any): this {
+    this.conditions.push({ column, op: '>=', value });
+    return this;
+  }
+
+  lt(column: string, value: any): this {
+    this.conditions.push({ column, op: '<', value });
+    return this;
+  }
+
+  lte(column: string, value: any): this {
+    this.conditions.push({ column, op: '<=', value });
+    return this;
+  }
+
+  like(column: string, value: string): this {
+    this.conditions.push({ column, op: 'LIKE', value });
+    return this;
+  }
+
+  ilike(column: string, value: string): this {
+    this.conditions.push({ column, op: 'ILIKE', value: value.toLowerCase() });
+    return this;
+  }
+
+  in(column: string, values: any[]): this {
+    this.conditions.push({ column, op: 'IN', value: values });
+    return this;
+  }
+
+  contains(column: string, value: any): this {
+    this.conditions.push({ column, op: 'CONTAINS', value });
+    return this;
+  }
+
+  order(column: string, options?: { ascending?: boolean }): this {
+    this.orderByArr.push({ column, ascending: options?.ascending ?? true });
+    return this;
+  }
+
+  limit(count: number): this {
+    this.limitCount = count;
+    return this;
+  }
+
+  private matchesConditions(row: any): boolean {
+    for (const cond of this.conditions) {
+      const rowVal = row[cond.column];
+      switch (cond.op) {
+        case '=':
+          if (rowVal !== cond.value) return false;
+          break;
+        case '!=':
+          if (rowVal === cond.value) return false;
+          break;
+        case '>':
+          if (!(rowVal > cond.value)) return false;
+          break;
+        case '>=':
+          if (!(rowVal >= cond.value)) return false;
+          break;
+        case '<':
+          if (!(rowVal < cond.value)) return false;
+          break;
+        case '<=':
+          if (!(rowVal <= cond.value)) return false;
+          break;
+        case 'LIKE':
+          if (typeof rowVal === 'string') {
+            const pattern = cond.value.replace(/%/g, '.*');
+            if (!new RegExp(pattern, 'i').test(rowVal)) return false;
+          } else {
+            return false;
+          }
+          break;
+        case 'ILIKE':
+          if (typeof rowVal === 'string') {
+            const pattern = cond.value.replace(/%/g, '.*');
+            if (!new RegExp(pattern, 'i').test(rowVal.toLowerCase())) return false;
+          } else {
+            return false;
+          }
+          break;
+        case 'IN':
+          if (!Array.isArray(cond.value) || !cond.value.includes(rowVal)) return false;
+          break;
+        case 'CONTAINS':
+          if (Array.isArray(rowVal)) {
+            if (!rowVal.includes(cond.value)) return false;
+          } else {
+            return false;
+          }
+          break;
+      }
+    }
+    return true;
+  }
+
+  private execute(): QueryResult<T[]> {
+    try {
+      if (this.operation === 'select') {
+        let data = this.getData();
+        data = data.filter(row => this.matchesConditions(row));
+        
+        // Apply ordering
+        for (const ord of this.orderByArr) {
+          data.sort((a: any, b: any) => {
+            const aVal = a[ord.column];
+            const bVal = b[ord.column];
+            if (aVal < bVal) return ord.ascending ? -1 : 1;
+            if (aVal > bVal) return ord.ascending ? 1 : -1;
+            return 0;
+          });
+        }
+        
+        // Apply limit
+        if (this.limitCount !== null) {
+          data = data.slice(0, this.limitCount);
+        }
+        
+        return { data, error: null };
+      }
+
+      if (this.operation === 'insert') {
+        const existing = this.getData();
+        const items = Array.isArray(this.insertData) ? this.insertData : [this.insertData];
+        const newItems: T[] = [];
+        
+        for (const item of items) {
+          const newItem = {
+            ...item,
+            id: item.id || crypto.randomUUID(),
+            created_at: item.created_at || new Date().toISOString(),
+          } as T;
+          newItems.push(newItem);
+        }
+        
+        this.setData([...existing, ...newItems]);
+        return { data: newItems, error: null };
+      }
+
+      if (this.operation === 'update') {
+        const data = this.getData();
+        const updatedItems: T[] = [];
+        
+        const newData = data.map(row => {
+          if (this.matchesConditions(row)) {
+            const updated = { ...row, ...this.updateData, updated_at: new Date().toISOString() };
+            updatedItems.push(updated);
+            return updated;
+          }
+          return row;
+        });
+        
+        this.setData(newData);
+        return { data: updatedItems, error: null };
+      }
+
+      if (this.operation === 'delete') {
+        const data = this.getData();
+        const newData = data.filter(row => !this.matchesConditions(row));
+        this.setData(newData);
+        return { data: [], error: null };
+      }
+
+      return { data: null, error: 'Unknown operation' };
+    } catch (error: any) {
+      return { data: null, error: error.message };
+    }
+  }
 
   async single(): Promise<QueryResult<T>> {
-    console.warn(`[MockDB] ${this.table}.single() - Electron muhitida ishga tushiring`);
-    return { data: null, error: "Electron muhitida ishga tushiring" };
+    const result = this.execute();
+    if (result.error) {
+      return { data: null, error: result.error };
+    }
+    if (!result.data || result.data.length === 0) {
+      return { data: null, error: 'No rows found' };
+    }
+    return { data: result.data[0], error: null };
   }
 
   async maybeSingle(): Promise<QueryResult<T | null>> {
-    console.warn(`[MockDB] ${this.table}.maybeSingle() - Electron muhitida ishga tushiring`);
-    return { data: null, error: null };
+    const result = this.execute();
+    if (result.error) {
+      return { data: null, error: result.error };
+    }
+    return { data: result.data?.[0] || null, error: null };
   }
 
   then<TResult>(
     onfulfilled?: (value: QueryResult<T[]>) => TResult
   ): Promise<TResult> {
-    console.warn(`[MockDB] ${this.table} - Electron muhitida ishga tushiring`);
-    const result: QueryResult<T[]> = { data: [], error: null };
+    const result = this.execute();
     return Promise.resolve(result).then(onfulfilled as any);
   }
 }
@@ -416,7 +644,7 @@ type TableName = 'admin_settings' | 'app_settings' | 'attendance' | 'class_stude
  * =====================================================
  * 
  * Electron muhitida: SQLite dan foydalanadi
- * Brauzerda: Mock query builder (bo'sh natijalar)
+ * Brauzerda: LocalStorage query builder (ma'lumotlar saqlanadi)
  * 
  * =====================================================
  */
@@ -426,8 +654,8 @@ export const db = {
     if (getIsElectron()) {
       return new SQLiteQueryBuilder<T>(table);
     }
-    // In browser, use mock (returns empty results with warning)
-    return new MockQueryBuilder<T>(table);
+    // In browser, use LocalStorage (data persists across reloads)
+    return new LocalStorageQueryBuilder<T>(table);
   },
   
   // Check runtime environment
