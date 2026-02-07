@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStudent } from "@/lib/student-context";
 import { useBranding } from "@/lib/branding-context";
-import { db } from "@/lib/database";
+import { fetchActiveGradeClassNames } from "@/lib/grade-classes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,22 +23,39 @@ export default function Login() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showInstructorModal, setShowInstructorModal] = useState(false);
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
+  const [classesLoading, setClassesLoading] = useState(true);
 
   // Fetch available classes from grade_classes table
   useEffect(() => {
-    const fetchClasses = async () => {
-      const { data } = await db
-        .from("grade_classes")
-        .select("name")
-        .eq("is_active", true)
-        .order("display_order", { ascending: true });
+    let cancelled = false;
 
-      if (data) {
-        setAvailableClasses((data as { name: string }[]).map(c => c.name));
+    (async () => {
+      try {
+        setClassesLoading(true);
+        const { data, error } = await fetchActiveGradeClassNames();
+        if (cancelled) return;
+
+        if (error) {
+          console.error("Error fetching classes:", error);
+          toast.error("Sinflarni yuklashda xatolik");
+          setAvailableClasses([]);
+          return;
+        }
+
+        setAvailableClasses(data);
+      } catch (e) {
+        if (cancelled) return;
+        console.error("Error fetching classes:", e);
+        toast.error("Sinflarni yuklashda xatolik");
+        setAvailableClasses([]);
+      } finally {
+        if (!cancelled) setClassesLoading(false);
       }
-    };
+    })();
 
-    fetchClasses();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Redirect if already logged in
@@ -229,17 +246,21 @@ return (
                     <SelectValue placeholder="Sinfingizni tanlang" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableClasses.length > 0 ? (
-                      availableClasses.map((cls) => (
-                        <SelectItem key={cls} value={cls}>
-                          {cls}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="loading" disabled>
-                        Yuklanmoqda...
+                  {classesLoading ? (
+                    <SelectItem value="loading" disabled>
+                      Yuklanmoqda...
+                    </SelectItem>
+                  ) : availableClasses.length > 0 ? (
+                    availableClasses.map((cls) => (
+                      <SelectItem key={cls} value={cls}>
+                        {cls}
                       </SelectItem>
-                    )}
+                    ))
+                  ) : (
+                    <SelectItem value="empty" disabled>
+                      Sinflar topilmadi
+                    </SelectItem>
+                  )}
                   </SelectContent>
                 </Select>
               </div>

@@ -127,8 +127,12 @@ class SQLiteQueryBuilder<T> implements QueryBuilder<T> {
   }
 
   select(columns: string = '*'): this {
-    this.operation = 'select';
+    // Supabase-compat: insert().select() should NOT override the operation.
+    // We always return inserted/updated rows from SQLite IPC anyway.
     this.selectColumns = columns;
+    if (this.operation === 'select') {
+      this.operation = 'select';
+    }
     return this;
   }
 
