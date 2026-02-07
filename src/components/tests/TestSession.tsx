@@ -38,7 +38,8 @@ const isImageUrl = (str: string): boolean => {
   return (
     lower.match(/\.(png|jpe?g|gif|webp|svg|bmp)(\?.*)?$/) !== null ||
     lower.startsWith("data:image/") ||
-    lower.includes("/storage/v1/object/") // Supabase storage
+    lower.startsWith("local-file://") ||
+    lower.startsWith("file://")
   );
 };
 

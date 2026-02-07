@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DOMPurify from "dompurify";
 import mammoth from "mammoth/mammoth.browser";
+import { storage } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Image as ImageIcon, File, Download, ExternalLink, Loader2 } from "lucide-react";
@@ -15,6 +16,11 @@ export interface LessonAttachment {
 const docxHtmlCache = new Map<string, string>();
 const textCache = new Map<string, string>();
 
+const getIsElectron = () => {
+  if (typeof window === "undefined") return false;
+  return !!(window as any).electronAPI?.isElectron;
+};
+
 const getFileIcon = (type: string) => {
   if (type.startsWith("image/")) return ImageIcon;
   if (type.includes("pdf")) return FileText;
@@ -27,15 +33,23 @@ const formatFileSize = (bytes: number) => {
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 };
 
-function FileActions({ attachment }: { attachment: LessonAttachment }) {
+function base64ToUint8Array(base64: string) {
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function FileActions({ hrefUrl, fileName }: { hrefUrl: string; fileName: string }) {
   return (
     <div className="flex gap-1">
-      <a href={attachment.url} target="_blank" rel="noopener noreferrer">
+      <a href={hrefUrl} target="_blank" rel="noopener noreferrer">
         <Button variant="ghost" size="icon" className="h-8 w-8">
           <ExternalLink className="w-4 h-4" />
         </Button>
       </a>
-      <a href={attachment.url} download={attachment.name}>
+      <a href={hrefUrl} download={fileName}>
         <Button variant="ghost" size="icon" className="h-8 w-8">
           <Download className="w-4 h-4" />
         </Button>
@@ -44,7 +58,7 @@ function FileActions({ attachment }: { attachment: LessonAttachment }) {
   );
 }
 
-function FallbackFileCard({ attachment }: { attachment: LessonAttachment }) {
+function FallbackFileCard({ attachment, hrefUrl }: { attachment: LessonAttachment; hrefUrl: string }) {
   const FileIcon = getFileIcon(attachment.type);
   return (
     <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
@@ -53,12 +67,20 @@ function FallbackFileCard({ attachment }: { attachment: LessonAttachment }) {
         <p className="text-sm font-medium truncate">{attachment.name}</p>
         <p className="text-xs text-muted-foreground">{formatFileSize(attachment.size)}</p>
       </div>
-      <FileActions attachment={attachment} />
+      <FileActions hrefUrl={hrefUrl} fileName={attachment.name} />
     </div>
   );
 }
 
-function AttachmentHeader({ attachment, label }: { attachment: LessonAttachment; label?: string }) {
+function AttachmentHeader({
+  attachment,
+  label,
+  hrefUrl,
+}: {
+  attachment: LessonAttachment;
+  label?: string;
+  hrefUrl: string;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <div className="min-w-0">
@@ -71,7 +93,7 @@ function AttachmentHeader({ attachment, label }: { attachment: LessonAttachment;
             {label}
           </Badge>
         ) : null}
-        <FileActions attachment={attachment} />
+        <FileActions hrefUrl={hrefUrl} fileName={attachment.name} />
       </div>
     </div>
   );
@@ -80,6 +102,7 @@ function AttachmentHeader({ attachment, label }: { attachment: LessonAttachment;
 export function AttachmentPreview({ attachment }: { attachment: LessonAttachment }) {
   const nameLower = attachment.name.toLowerCase();
   const typeLower = (attachment.type || "").toLowerCase();
+  const isElectron = getIsElectron();
 
   const kind = useMemo(() => {
     if (typeLower.startsWith("image/") || nameLower.match(/\.(png|jpe?g|gif|webp|svg)$/)) return "image";
@@ -89,15 +112,38 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
       nameLower.endsWith(".docx")
     )
       return "docx";
-    // DOC (legacy Word) - show Google Docs Viewer preview
+    // DOC/RTF: offlayn preview yo'q (oldin Google Docs viewer ishlatilgan)
     if (typeLower === "application/msword" || nameLower.endsWith(".doc")) return "doc";
-    // RTF - show Google Docs Viewer preview
     if (typeLower === "application/rtf" || typeLower === "text/rtf" || nameLower.endsWith(".rtf")) return "rtf";
     if (typeLower.startsWith("text/") || nameLower.endsWith(".txt")) return "text";
     if (typeLower.startsWith("audio/")) return "audio";
     if (typeLower.startsWith("video/")) return "video";
     return "file";
   }, [nameLower, typeLower]);
+
+  const [resolvedUrl, setResolvedUrl] = useState(attachment.url);
+
+  // local-file:// → file:// (Electron) resolve
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!isElectron) {
+        setResolvedUrl(attachment.url);
+        return;
+      }
+
+      try {
+        const url = await storage.resolveUrl(attachment.url);
+        if (!cancelled) setResolvedUrl(url || attachment.url);
+      } catch {
+        if (!cancelled) setResolvedUrl(attachment.url);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [attachment.url, isElectron]);
 
   // DOCX preview
   const [docxHtml, setDocxHtml] = useState<string | null>(null);
@@ -122,16 +168,24 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
         setDocxError(null);
         setDocxHtml(null);
 
-        const res = await fetch(attachment.url);
-        if (!res.ok) throw new Error("Faylni yuklab bo'lmadi");
-        const arrayBuffer = await res.arrayBuffer();
+        let arrayBuffer: ArrayBuffer;
+
+        if (isElectron && attachment.url.startsWith("local-file://")) {
+          const { data, error } = await storage.read("lesson-attachments", attachment.url);
+          if (error || !data) throw new Error(error || "Faylni o'qib bo'lmadi");
+          arrayBuffer = base64ToUint8Array(data.base64).buffer;
+        } else {
+          const res = await fetch(resolvedUrl);
+          if (!res.ok) throw new Error("Faylni yuklab bo'lmadi");
+          arrayBuffer = await res.arrayBuffer();
+        }
 
         const { value } = await mammoth.convertToHtml({ arrayBuffer });
         const safeHtml = DOMPurify.sanitize(value, { USE_PROFILES: { html: true } });
 
         docxHtmlCache.set(attachment.url, safeHtml);
         if (!cancelled) setDocxHtml(safeHtml);
-      } catch (e) {
+      } catch {
         if (!cancelled) {
           setDocxError("DOCX preview ishlamadi. Faylni ochib ko'rish yoki yuklab olish mumkin.");
         }
@@ -143,7 +197,7 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
     return () => {
       cancelled = true;
     };
-  }, [attachment.url, kind]);
+  }, [attachment.url, kind, isElectron, resolvedUrl]);
 
   // TEXT preview
   const [textContent, setTextContent] = useState<string | null>(null);
@@ -168,13 +222,22 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
         setTextError(null);
         setTextContent(null);
 
-        const res = await fetch(attachment.url);
-        if (!res.ok) throw new Error("Faylni yuklab bo'lmadi");
-        const text = await res.text();
+        let text: string;
+
+        if (isElectron && attachment.url.startsWith("local-file://")) {
+          const { data, error } = await storage.read("lesson-attachments", attachment.url);
+          if (error || !data) throw new Error(error || "Faylni o'qib bo'lmadi");
+          const bytes = base64ToUint8Array(data.base64);
+          text = new TextDecoder("utf-8").decode(bytes);
+        } else {
+          const res = await fetch(resolvedUrl);
+          if (!res.ok) throw new Error("Faylni yuklab bo'lmadi");
+          text = await res.text();
+        }
 
         textCache.set(attachment.url, text);
         if (!cancelled) setTextContent(text);
-      } catch (e) {
+      } catch {
         if (!cancelled) setTextError("Matn faylini ko'rsatib bo'lmadi.");
       } finally {
         if (!cancelled) setTextLoading(false);
@@ -184,18 +247,13 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
     return () => {
       cancelled = true;
     };
-  }, [attachment.url, kind]);
+  }, [attachment.url, kind, isElectron, resolvedUrl]);
 
   if (kind === "image") {
     return (
       <div className="space-y-2">
-        <img
-          src={attachment.url}
-          alt={attachment.name}
-          className="max-w-full rounded-lg border"
-          loading="lazy"
-        />
-        <AttachmentHeader attachment={attachment} label="Rasm" />
+        <img src={resolvedUrl} alt={attachment.name} className="max-w-full rounded-lg border" loading="lazy" />
+        <AttachmentHeader attachment={attachment} hrefUrl={resolvedUrl} label="Rasm" />
       </div>
     );
   }
@@ -203,10 +261,10 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
   if (kind === "pdf") {
     return (
       <div className="space-y-2">
-        <AttachmentHeader attachment={attachment} label="PDF" />
+        <AttachmentHeader attachment={attachment} hrefUrl={resolvedUrl} label="PDF" />
         <iframe
           title={attachment.name}
-          src={attachment.url}
+          src={resolvedUrl}
           className="w-full h-[70vh] rounded-lg border bg-background"
           loading="lazy"
         />
@@ -217,7 +275,7 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
   if (kind === "docx") {
     return (
       <div className="space-y-2">
-        <AttachmentHeader attachment={attachment} label="DOCX" />
+        <AttachmentHeader attachment={attachment} hrefUrl={resolvedUrl} label="DOCX" />
         <div className="rounded-lg border bg-background p-4">
           {docxLoading ? (
             <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
@@ -227,10 +285,7 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
           ) : docxError ? (
             <div className="text-sm text-muted-foreground">{docxError}</div>
           ) : docxHtml ? (
-            <div
-              className="prose prose-sm max-w-none dark:prose-invert"
-              dangerouslySetInnerHTML={{ __html: docxHtml }}
-            />
+            <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: docxHtml }} />
           ) : (
             <div className="text-sm text-muted-foreground">Ko'rsatish uchun ma'lumot yo'q.</div>
           )}
@@ -239,18 +294,14 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
     );
   }
 
-  // DOC / RTF via Google Docs Viewer
+  // DOC / RTF: internet preview olib tashlandi (offlayn rejim)
   if (kind === "doc" || kind === "rtf") {
-    const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(attachment.url)}&embedded=true`;
     return (
       <div className="space-y-2">
-        <AttachmentHeader attachment={attachment} label={kind.toUpperCase()} />
-        <iframe
-          title={attachment.name}
-          src={viewerUrl}
-          className="w-full h-[70vh] rounded-lg border bg-background"
-          loading="lazy"
-        />
+        <AttachmentHeader attachment={attachment} hrefUrl={resolvedUrl} label={kind.toUpperCase()} />
+        <div className="rounded-lg border bg-background p-4 text-sm text-muted-foreground">
+          {kind.toUpperCase()} preview offlayn rejimda mavjud emas. Faylni "Ochish" orqali tashqi dasturda ko'ring yoki yuklab oling.
+        </div>
       </div>
     );
   }
@@ -258,7 +309,7 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
   if (kind === "text") {
     return (
       <div className="space-y-2">
-        <AttachmentHeader attachment={attachment} label="TXT" />
+        <AttachmentHeader attachment={attachment} hrefUrl={resolvedUrl} label="TXT" />
         <div className="rounded-lg border bg-background p-4">
           {textLoading ? (
             <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
@@ -278,9 +329,9 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
   if (kind === "audio") {
     return (
       <div className="space-y-2">
-        <AttachmentHeader attachment={attachment} label="Audio" />
+        <AttachmentHeader attachment={attachment} hrefUrl={resolvedUrl} label="Audio" />
         <audio controls className="w-full">
-          <source src={attachment.url} />
+          <source src={resolvedUrl} />
         </audio>
       </div>
     );
@@ -289,13 +340,14 @@ export function AttachmentPreview({ attachment }: { attachment: LessonAttachment
   if (kind === "video") {
     return (
       <div className="space-y-2">
-        <AttachmentHeader attachment={attachment} label="Video" />
+        <AttachmentHeader attachment={attachment} hrefUrl={resolvedUrl} label="Video" />
         <video controls className="w-full rounded-lg border bg-background">
-          <source src={attachment.url} />
+          <source src={resolvedUrl} />
         </video>
       </div>
     );
   }
 
-  return <FallbackFileCard attachment={attachment} />;
+  return <FallbackFileCard attachment={attachment} hrefUrl={resolvedUrl} />;
 }
+
