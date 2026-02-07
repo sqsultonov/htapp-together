@@ -1,4 +1,6 @@
-// Unified database layer - works with SQLite (Electron offline)
+// Unified database layer - works with SQLite (Electron offline) or Supabase (Web)
+
+import { supabase } from "@/integrations/supabase/client";
 
 // Check if running in Electron - check at runtime
 const getIsElectron = () => {
@@ -346,20 +348,20 @@ type TableName = 'admin_settings' | 'app_settings' | 'attendance' | 'class_stude
   'instructors' | 'lesson_progress' | 'lessons' | 'profiles' | 'questions' | 'students' | 
   'test_results' | 'tests' | 'user_roles';
 
-// Unified database client (pure offline SQLite)
+// Unified database client - uses SQLite in Electron, Supabase in browser
 export const db = {
-  from<T = any>(table: TableName | string): QueryBuilder<T> {
-    if (!getIsElectron()) {
-      throw new Error(
-        "Bu ilova faqat Electron (desktop) muhitida ishlaydi. SQLite bazasi faqat desktopda mavjud."
-      );
+  from<T = any>(table: TableName | string): any {
+    // In Electron, use SQLite
+    if (getIsElectron()) {
+      return new SQLiteQueryBuilder<T>(table);
     }
-    return new SQLiteQueryBuilder<T>(table);
+    // In browser, use Supabase as fallback
+    return supabase.from(table as any);
   },
   
   // Check runtime environment
   get isOffline() { return getIsElectron(); },
-  get isOnline() { return false; }, // Always offline
+  get isOnline() { return !getIsElectron(); },
 };
 
 // Re-export for compatibility
