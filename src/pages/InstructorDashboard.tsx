@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useInstructor } from "@/lib/instructor-context";
 import { useBranding } from "@/lib/branding-context";
 import { db } from "@/lib/database";
+import { fetchActiveGradeClassNames } from "@/lib/grade-classes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -105,14 +106,15 @@ export default function InstructorDashboard() {
   }, [instructor, selectedClass]);
 
   const fetchAvailableClasses = async () => {
-    const { data } = await db
-      .from("grade_classes")
-      .select("name")
-      .eq("is_active", true)
-      .order("display_order", { ascending: true });
-    
-    if (data) {
-      setAvailableClasses((data as { name: string }[]).map(c => c.name));
+    try {
+      const { data, error } = await fetchActiveGradeClassNames();
+      if (error) {
+        console.error("Error fetching classes:", error);
+        return;
+      }
+      setAvailableClasses(data);
+    } catch (e) {
+      console.error("Error fetching classes:", e);
     }
   };
 

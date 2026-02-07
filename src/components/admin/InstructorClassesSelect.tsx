@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { db } from "@/lib/database";
+import { fetchGradeClasses } from "@/lib/grade-classes";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -20,20 +20,34 @@ export function InstructorClassesSelect({ selectedClasses, onChange }: Instructo
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchClasses = async () => {
-      const { data } = await db
-        .from("grade_classes")
-        .select("*")
-        .eq("is_active", true)
-        .order("display_order", { ascending: true });
+    let cancelled = false;
 
-      if (data) {
-        setAvailableClasses(data as GradeClass[]);
+    (async () => {
+      try {
+        const { data, error } = await fetchGradeClasses();
+        if (cancelled) return;
+
+        if (error) {
+          console.error("Error fetching classes:", error);
+          setAvailableClasses([]);
+          return;
+        }
+
+        // Robust filter: accept 1/"1"/true/"true"
+        const active = (data || []).filter((c) => {
+          const v: any = (c as any).is_active;
+          return v === true || v === 1 || v === "1" || String(v).toLowerCase() === "true";
+        });
+
+        setAvailableClasses(active as GradeClass[]);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
-    };
+    })();
 
-    fetchClasses();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleToggle = (className: string) => {

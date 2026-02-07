@@ -37,6 +37,7 @@ import { ClassesTab } from "@/components/admin/ClassesTab";
 import { BrandingTab } from "@/components/admin/BrandingTab";
 import { InstructorClassesSelect } from "@/components/admin/InstructorClassesSelect";
 import { useBranding } from "@/lib/branding-context";
+import { fetchActiveGradeClassNames } from "@/lib/grade-classes";
 
 interface Student {
   id: string;
@@ -155,77 +156,77 @@ export default function Admin() {
 
   const fetchData = async () => {
     setLoading(true);
-    
-    // Fetch students
-    const { data: studentsData } = await db
-      .from("students")
-      .select("*")
-      .order("created_at", { ascending: false });
-    
-    // Fetch instructors
-    const { data: instructorsData } = await db
-      .from("instructors")
-      .select("*")
-      .order("created_at", { ascending: false });
-    
-    // Fetch available classes
-    const { data: classesData } = await db
-      .from("grade_classes")
-      .select("name")
-      .eq("is_active", true)
-      .order("display_order", { ascending: true });
-    
-    if (instructorsData) {
-      setInstructors(instructorsData as Instructor[]);
-    }
-    
-    const studentsArr = (studentsData || []) as Student[];
-    if (studentsArr.length > 0) {
-      setStudents(studentsArr);
-      
-      // Calculate class stats
-      const stats: Record<string, { count: number; totalScore: number; testCount: number }> = {};
-      
-      // Initialize with available classes
-      if (classesData) {
-        (classesData as { name: string }[]).forEach(c => {
-          stats[c.name] = { count: 0, totalScore: 0, testCount: 0 };
-        });
+
+    try {
+      const [studentsRes, instructorsRes, classesRes, resultsRes] = await Promise.all([
+        db.from("students").select("*").order("created_at", { ascending: false }),
+        db.from("instructors").select("*").order("created_at", { ascending: false }),
+        fetchActiveGradeClassNames(),
+        db.from("test_results").select("student_class, percentage"),
+      ]);
+
+      if (instructorsRes.data) {
+        setInstructors(instructorsRes.data as Instructor[]);
       }
-      
-      studentsArr.forEach((student) => {
-        if (student.class_name && stats[student.class_name]) {
+
+      const studentsArr = (studentsRes.data || []) as Student[];
+      setStudents(studentsArr);
+
+      // Always calculate stats (even if no students yet)
+      const stats: Record<string, { count: number; totalScore: number; testCount: number }> = {};
+
+      // Initialize with available classes
+      for (const className of classesRes.data || []) {
+        stats[className] = { count: 0, totalScore: 0, testCount: 0 };
+      }
+
+      // Count students per class
+      for (const student of studentsArr) {
+        if (student.class_name) {
+          if (!stats[student.class_name]) {
+            stats[student.class_name] = { count: 0, totalScore: 0, testCount: 0 };
+          }
           stats[student.class_name].count++;
         }
-      });
-      
-      // Fetch test results for average scores
-      const { data: resultsData } = await db
-        .from("test_results")
-        .select("student_class, percentage");
-      
-      if (resultsData) {
-        (resultsData as { student_class: string | null; percentage: number }[]).forEach((result) => {
-          const classKey = result.student_class;
-          if (classKey && stats[classKey]) {
-            stats[classKey].totalScore += result.percentage;
-            stats[classKey].testCount++;
-          }
-        });
       }
-      
-      const classStatsArray: ClassStats[] = Object.entries(stats).map(([className, data]) => ({
-        className,
-        count: data.count,
-        avgScore: data.testCount > 0 ? Math.round(data.totalScore / data.testCount) : 0,
-      }));
-      
+
+      // Average from test results
+      const resultsData = (resultsRes.data || []) as { student_class: string | null; percentage: number }[];
+      for (const result of resultsData) {
+        const classKey = result.student_class;
+        if (!classKey) continue;
+        if (!stats[classKey]) {
+          stats[classKey] = { count: 0, totalScore: 0, testCount: 0 };
+        }
+        stats[classKey].totalScore += Number(result.percentage) || 0;
+        stats[classKey].testCount++;
+      }
+
+      const classStatsArray: ClassStats[] = Object.entries(stats)
+        .map(([className, data]) => ({
+          className,
+          count: data.count,
+          avgScore: data.testCount > 0 ? Math.round(data.totalScore / data.testCount) : 0,
+        }))
+        .sort((a, b) => a.className.localeCompare(b.className, "uz"));
+
       setClassStats(classStatsArray);
-    } else {
-      setStudents([]);
+
+      if (studentsRes.error) {
+        toast.error("O'quvchilarni yuklashda xatolik");
+      }
+      if (instructorsRes.error) {
+        toast.error("Rahbarlarni yuklashda xatolik");
+      }
+      if (classesRes.error) {
+        toast.error("Sinflarni yuklashda xatolik");
+      }
+      if (resultsRes.error) {
+        toast.error("Natijalarni yuklashda xatolik");
+      }
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const handleLogout = () => {
