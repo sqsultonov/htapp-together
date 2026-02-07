@@ -38,6 +38,12 @@ import { BrandingTab } from "@/components/admin/BrandingTab";
 import { InstructorClassesSelect } from "@/components/admin/InstructorClassesSelect";
 import { useBranding } from "@/lib/branding-context";
 import { fetchActiveGradeClassNames } from "@/lib/grade-classes";
+// =====================================================
+// TUN/KUN REJIMI TOGGLE IMPORT
+// Olib tashlash uchun quyidagi importni o'chiring
+// =====================================================
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+// =====================================================
 
 interface Student {
   id: string;
@@ -428,10 +434,18 @@ export default function Admin() {
               <p className="text-xs text-muted-foreground">Boshqaruv paneli</p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Chiqish
-          </Button>
+          {/* =====================================================
+              TUN/KUN REJIMI TOGGLE VA CHIQISH
+              Olib tashlash uchun ThemeToggle ni o'chiring
+              ===================================================== */}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Chiqish
+            </Button>
+          </div>
+          {/* ===================================================== */}
         </div>
       </header>
 
