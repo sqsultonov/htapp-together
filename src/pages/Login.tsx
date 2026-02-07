@@ -12,6 +12,12 @@ import { toast } from "sonner";
 import { GraduationCap, BookOpen, Users, User } from "lucide-react";
 import { AdminPinModal } from "@/components/AdminPinModal";
 import { InstructorLoginModal } from "@/components/InstructorLoginModal";
+// =====================================================
+// TUN/KUN REJIMI TOGGLE IMPORT
+// Olib tashlash uchun quyidagi importni o'chiring
+// =====================================================
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+// =====================================================
 
 export default function Login() {
   const { student, loading, login, setIsAdmin } = useStudent();
@@ -199,7 +205,16 @@ return (
       </div>
 
       {/* Right side - Login form */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative">
+        {/* =====================================================
+            TUN/KUN REJIMI TOGGLE - Yuqori o'ng burchakda
+            Olib tashlash uchun quyidagi div ni o'chiring
+            ===================================================== */}
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        {/* ===================================================== */}
+        
         <Card className="w-full max-w-md shadow-card border-0">
           <CardHeader className="text-center pb-2">
             <div className="flex items-center justify-center gap-2 mb-4 lg:hidden">

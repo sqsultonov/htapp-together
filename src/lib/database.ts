@@ -1,6 +1,15 @@
-// Unified database layer - works with SQLite (Electron offline) or Supabase (Web)
-
-import { supabase } from "@/integrations/supabase/client";
+/**
+ * =====================================================
+ * OFFLAYN DATABASE ADAPTER
+ * =====================================================
+ * 
+ * Bu modul faqat Electron muhitida SQLite bilan ishlaydi.
+ * Agar brauzerda ishlatilsa, xato qaytaradi.
+ * 
+ * Supabase yoki boshqa cloud servislar bilan bog'lanmaydi.
+ * 
+ * =====================================================
+ */
 
 // Check if running in Electron - check at runtime
 const getIsElectron = () => {
@@ -43,7 +52,7 @@ function normalizeSqliteValue(value: any): any {
   if (typeof value === 'number' || typeof value === 'string' || typeof value === 'bigint') return value;
   if (value instanceof Date) return value.toISOString();
 
-  // Arrays / objects: store as JSON string (most of our “complex” fields are JSON columns)
+  // Arrays / objects: store as JSON string (most of our "complex" fields are JSON columns)
   try {
     return JSON.stringify(value);
   } catch {
@@ -113,6 +122,59 @@ const jsonFieldsMap: Record<string, string[]> = {
   questions: ['options'],
   test_results: ['answers'],
 };
+
+/**
+ * =====================================================
+ * MOCK QUERY BUILDER - Brauzer uchun
+ * =====================================================
+ * 
+ * Brauzerda SQLite mavjud emas, shuning uchun bo'sh natijalar
+ * qaytaradigan mock query builder ishlatiladi.
+ * 
+ * =====================================================
+ */
+class MockQueryBuilder<T> implements QueryBuilder<T> {
+  private table: string;
+
+  constructor(table: string) {
+    this.table = table;
+  }
+
+  select(): this { return this; }
+  insert(): this { return this; }
+  update(): this { return this; }
+  delete(): this { return this; }
+  eq(): this { return this; }
+  neq(): this { return this; }
+  gt(): this { return this; }
+  gte(): this { return this; }
+  lt(): this { return this; }
+  lte(): this { return this; }
+  like(): this { return this; }
+  ilike(): this { return this; }
+  in(): this { return this; }
+  contains(): this { return this; }
+  order(): this { return this; }
+  limit(): this { return this; }
+
+  async single(): Promise<QueryResult<T>> {
+    console.warn(`[MockDB] ${this.table}.single() - Electron muhitida ishga tushiring`);
+    return { data: null, error: "Electron muhitida ishga tushiring" };
+  }
+
+  async maybeSingle(): Promise<QueryResult<T | null>> {
+    console.warn(`[MockDB] ${this.table}.maybeSingle() - Electron muhitida ishga tushiring`);
+    return { data: null, error: null };
+  }
+
+  then<TResult>(
+    onfulfilled?: (value: QueryResult<T[]>) => TResult
+  ): Promise<TResult> {
+    console.warn(`[MockDB] ${this.table} - Electron muhitida ishga tushiring`);
+    const result: QueryResult<T[]> = { data: [], error: null };
+    return Promise.resolve(result).then(onfulfilled as any);
+  }
+}
 
 class SQLiteQueryBuilder<T> implements QueryBuilder<T> {
   private table: string;
@@ -348,20 +410,30 @@ type TableName = 'admin_settings' | 'app_settings' | 'attendance' | 'class_stude
   'instructors' | 'lesson_progress' | 'lessons' | 'profiles' | 'questions' | 'students' | 
   'test_results' | 'tests' | 'user_roles';
 
-// Unified database client - uses SQLite in Electron, Supabase in browser
+/**
+ * =====================================================
+ * UNIFIED DATABASE CLIENT (FAQAT OFFLAYN)
+ * =====================================================
+ * 
+ * Electron muhitida: SQLite dan foydalanadi
+ * Brauzerda: Mock query builder (bo'sh natijalar)
+ * 
+ * =====================================================
+ */
 export const db = {
-  from<T = any>(table: TableName | string): any {
+  from<T = any>(table: TableName | string): QueryBuilder<T> {
     // In Electron, use SQLite
     if (getIsElectron()) {
       return new SQLiteQueryBuilder<T>(table);
     }
-    // In browser, use Supabase as fallback
-    return supabase.from(table as any);
+    // In browser, use mock (returns empty results with warning)
+    return new MockQueryBuilder<T>(table);
   },
   
   // Check runtime environment
-  get isOffline() { return getIsElectron(); },
-  get isOnline() { return !getIsElectron(); },
+  get isOffline() { return true; }, // Har doim offlayn
+  get isOnline() { return false; }, // Hech qachon onlayn emas
+  get isElectron() { return getIsElectron(); },
 };
 
 // Re-export for compatibility
