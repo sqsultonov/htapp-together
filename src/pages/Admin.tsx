@@ -29,6 +29,7 @@ import {
   EyeOff,
   Settings,
   Layers,
+  Image,
 } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPinModal } from "@/components/AdminPinModal";
@@ -36,6 +37,7 @@ import { toast } from "sonner";
 import { ClassesTab } from "@/components/admin/ClassesTab";
 import { BrandingTab } from "@/components/admin/BrandingTab";
 import { InstructorClassesSelect } from "@/components/admin/InstructorClassesSelect";
+import { GraphicTestBankManager } from "@/components/graphic-tests/GraphicTestBankManager";
 import { useBranding } from "@/lib/branding-context";
 import { fetchActiveGradeClassNames } from "@/lib/grade-classes";
 // =====================================================
@@ -552,6 +554,10 @@ export default function Admin() {
               <FileText className="w-4 h-4" />
               Testlar
             </TabsTrigger>
+            <TabsTrigger value="graphic-tests" className="gap-2">
+              <Image className="w-4 h-4" />
+              Grafik testlar
+            </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="w-4 h-4" />
               Sozlamalar
@@ -891,6 +897,24 @@ export default function Admin() {
           {/* Classes Tab */}
           <TabsContent value="classes">
             <ClassesTab />
+          </TabsContent>
+
+          {/* Graphic Tests Tab */}
+          <TabsContent value="graphic-tests">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Image className="w-5 h-5" />
+                  Grafik testlar banki
+                </CardTitle>
+                <CardDescription>
+                  Rasm-matn juftliklarini boshqarish va grafik testlarni sozlash
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <GraphicTestBankManager createdBy="admin" />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Branding Tab */}
