@@ -22,12 +22,14 @@ import {
   Trophy,
   LogOut,
   GraduationCap,
+  Image,
 } from "lucide-react";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Bosh sahifa", path: "/dashboard" },
   { icon: BookOpen, label: "Darslar", path: "/lessons" },
   { icon: FileText, label: "Testlar", path: "/tests" },
+  { icon: Image, label: "Grafik testlar", path: "/graphic-tests" },
   { icon: Trophy, label: "Natijalar", path: "/results" },
 ];
 

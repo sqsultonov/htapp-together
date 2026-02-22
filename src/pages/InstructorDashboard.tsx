@@ -34,7 +34,9 @@ import {
   GraduationCap,
   FileSpreadsheet,
   Printer,
+  Image,
 } from "lucide-react";
+import { GraphicTestBankManager } from "@/components/graphic-tests/GraphicTestBankManager";
 // =====================================================
 // TUN/KUN REJIMI TOGGLE IMPORT
 // Olib tashlash uchun quyidagi importni o'chiring
@@ -395,6 +397,12 @@ export default function InstructorDashboard() {
               <TabsTrigger value="homework">
                 <ClipboardList className="w-4 h-4 mr-2" />
                 Uyga vazifa
+              </TabsTrigger>
+            )}
+            {hasPermission("can_add_tests") && (
+              <TabsTrigger value="graphic-tests">
+                <Image className="w-4 h-4 mr-2" />
+                Grafik testlar
               </TabsTrigger>
             )}
           </TabsList>
@@ -780,6 +788,26 @@ export default function InstructorDashboard() {
                   <div className="text-center text-muted-foreground py-8">
                     Uyga vazifa tizimi tez orada ishga tushiriladi
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* Graphic Tests Tab */}
+          {hasPermission("can_add_tests") && (
+            <TabsContent value="graphic-tests">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Image className="w-5 h-5" />
+                    Grafik testlar banki
+                  </CardTitle>
+                  <CardDescription>
+                    Rasm-matn juftliklarini boshqarish va grafik testlarni sozlash
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GraphicTestBankManager createdBy={instructor?.id || "instructor"} />
                 </CardContent>
               </Card>
             </TabsContent>
