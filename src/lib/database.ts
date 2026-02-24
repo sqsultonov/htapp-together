@@ -634,7 +634,8 @@ class SQLiteQueryBuilder<T> implements QueryBuilder<T> {
 
 // Table name type
 type TableName = 'admin_settings' | 'app_settings' | 'attendance' | 'class_students' | 
-  'classes' | 'grade_classes' | 'homework' | 'homework_submissions' | 'instructor_grades' | 
+  'classes' | 'grade_classes' | 'graphic_test_bank' | 'graphic_test_configs' |
+  'homework' | 'homework_submissions' | 'instructor_grades' | 
   'instructors' | 'lesson_progress' | 'lessons' | 'profiles' | 'questions' | 'students' | 
   'test_results' | 'tests' | 'user_roles';
 
