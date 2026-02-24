@@ -412,12 +412,7 @@ export function GraphicTestPlayer() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Grafik testlar</h1>
-        <p className="text-muted-foreground">
-          Rasmlarni aniqlash va moslashtirish testlari
-        </p>
-      </div>
+      {/* Header removed - shown in parent Tests page */}
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

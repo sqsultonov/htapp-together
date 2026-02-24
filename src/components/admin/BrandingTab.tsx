@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { db, isElectron } from "@/lib/database";
+import { db } from "@/lib/database";
 import { storage } from "@/lib/storage";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,8 @@ export function BrandingTab() {
 
   const resolveUrl = async (url: string | null): Promise<string | null> => {
     if (!url) return null;
+    // Data URLs (Base64) don't need resolving
+    if (url.startsWith("data:")) return url;
     return await storage.resolveUrl(url);
   };
 
@@ -108,17 +110,33 @@ export function BrandingTab() {
     setUploading(true);
 
     try {
-      const result = await storage.upload("app-assets", file, type);
-
-      if (result.error) {
-        toast.error("Yuklashda xatolik: " + result.error);
-        setUploading(false);
-        return;
-      }
-
-      if (result.data) {
-        setUrl(result.data.path);
-        toast.success("Fayl yuklandi");
+      if (db.isElectron) {
+        // Electron: save to file system
+        const result = await storage.upload("app-assets", file, type);
+        if (result.error) {
+          toast.error("Yuklashda xatolik: " + result.error);
+          setUploading(false);
+          return;
+        }
+        if (result.data) {
+          setUrl(result.data.path);
+          toast.success("Fayl yuklandi");
+        }
+      } else {
+        // Browser: convert to Base64 data URL
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          setUrl(dataUrl);
+          toast.success("Fayl yuklandi");
+          setUploading(false);
+        };
+        reader.onerror = () => {
+          toast.error("Faylni o'qishda xatolik");
+          setUploading(false);
+        };
+        reader.readAsDataURL(file);
+        return; // setUploading handled in callbacks
       }
     } catch (err) {
       toast.error("Yuklashda xatolik");
@@ -131,7 +149,7 @@ export function BrandingTab() {
   const handleRemoveImage = async (type: "logo" | "bg") => {
     const url = type === "logo" ? appLogoUrl : loginBgImageUrl;
     
-    if (url) {
+    if (url && !url.startsWith("data:")) {
       await storage.delete(url);
     }
     
@@ -448,7 +466,10 @@ export function BrandingTab() {
                       Fon rasmini yuklash uchun bosing
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Tavsiya: 1920x1080 o'lchamda
+                      Tavsiya: 1920×1080 (16:9), JPG/PNG, 5MB gacha
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Eng yaxshi natija uchun gorizontal yo'nalishli rasm tanlang
                     </p>
                   </>
                 )}
