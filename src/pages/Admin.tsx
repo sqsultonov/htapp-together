@@ -554,10 +554,6 @@ export default function Admin() {
               <FileText className="w-4 h-4" />
               Testlar
             </TabsTrigger>
-            <TabsTrigger value="graphic-tests" className="gap-2">
-              <Image className="w-4 h-4" />
-              Grafik testlar
-            </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="w-4 h-4" />
               Sozlamalar
@@ -875,46 +871,62 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="tests">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Testlar</CardTitle>
-                  <CardDescription>O'quvchilar uchun test savollari</CardDescription>
-                </div>
-                <Button>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Yangi test
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  Testlar qo'shish imkoniyati tez orada qo'shiladi
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <Tabs defaultValue="regular-tests" className="w-full">
+                <TabsList className="grid w-full max-w-md grid-cols-2">
+                  <TabsTrigger value="regular-tests" className="gap-2">
+                    <FileText className="w-4 h-4" />
+                    An'anaviy testlar
+                  </TabsTrigger>
+                  <TabsTrigger value="graphic-tests-sub" className="gap-2">
+                    <Image className="w-4 h-4" />
+                    Grafik testlar
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="regular-tests" className="mt-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <div>
+                        <CardTitle>Testlar</CardTitle>
+                        <CardDescription>O'quvchilar uchun test savollari</CardDescription>
+                      </div>
+                      <Button>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Yangi test
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-8 text-muted-foreground">
+                        Testlar qo'shish imkoniyati tez orada qo'shiladi
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="graphic-tests-sub" className="mt-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Image className="w-5 h-5" />
+                        Grafik testlar banki
+                      </CardTitle>
+                      <CardDescription>
+                        Rasm-matn juftliklarini boshqarish va grafik testlarni sozlash
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <GraphicTestBankManager createdBy="admin" />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
           </TabsContent>
 
           {/* Classes Tab */}
           <TabsContent value="classes">
             <ClassesTab />
-          </TabsContent>
-
-          {/* Graphic Tests Tab */}
-          <TabsContent value="graphic-tests">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Image className="w-5 h-5" />
-                  Grafik testlar banki
-                </CardTitle>
-                <CardDescription>
-                  Rasm-matn juftliklarini boshqarish va grafik testlarni sozlash
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <GraphicTestBankManager createdBy="admin" />
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Branding Tab */}
