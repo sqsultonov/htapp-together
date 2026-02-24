@@ -29,7 +29,7 @@ import Tests from "./pages/Tests";
 import Results from "./pages/Results";
 import Admin from "./pages/Admin";
 import InstructorDashboard from "./pages/InstructorDashboard";
-import GraphicTests from "./pages/GraphicTests";
+
 import StudentLayout from "./components/layout/StudentLayout";
 import NotFound from "./pages/NotFound";
 
@@ -55,7 +55,7 @@ const App = () => (
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/lessons" element={<Lessons />} />
                     <Route path="/tests" element={<Tests />} />
-                    <Route path="/graphic-tests" element={<GraphicTests />} />
+                    
                     <Route path="/results" element={<Results />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
