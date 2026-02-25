@@ -115,3 +115,4 @@ export function MultiClassSelect({
     </Popover>
   );
 }
+// S.Sultonov
