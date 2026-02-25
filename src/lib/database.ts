@@ -667,3 +667,4 @@ export const db = {
 
 // Re-export for compatibility
 export const isElectron = getIsElectron();
+// S.Sultonov

@@ -7,3 +7,4 @@ import { seedOfflineData } from "./lib/offline-seed";
 seedOfflineData();
 
 createRoot(document.getElementById("root")!).render(<App />);
+// S.Sultonov

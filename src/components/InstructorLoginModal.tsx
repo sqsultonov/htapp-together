@@ -112,3 +112,4 @@ export function InstructorLoginModal({ open, onOpenChange }: InstructorLoginModa
     </Dialog>
   );
 }
+// S.Sultonov

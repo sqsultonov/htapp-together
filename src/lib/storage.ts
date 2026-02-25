@@ -287,3 +287,4 @@ export const storage = {
 
 // Export helper to check environment
 export const isElectronStorage = getIsElectron;
+// S.Sultonov

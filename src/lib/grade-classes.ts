@@ -83,3 +83,4 @@ export async function fetchActiveGradeClassNames(): Promise<{ data: string[]; er
   // 2) Aks holda – hech bo'lmasa mavjud sinflarni ko'rsatamiz
   return { data: all, error: null };
 }
+// S.Sultonov

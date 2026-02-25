@@ -32,3 +32,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
 });
 
 console.log('Preload script loaded - Electron API exposed (DB + Storage)');
+// S.Sultonov
