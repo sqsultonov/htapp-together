@@ -80,3 +80,4 @@ export function TestCard({ test, index, onStart }: TestCardProps) {
     </Card>
   );
 }
+// S.Sultonov

@@ -54,3 +54,4 @@ export function LessonViewer({ lesson }: LessonViewerProps) {
     </Card>
   );
 }
+// S.Sultonov
