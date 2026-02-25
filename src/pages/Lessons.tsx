@@ -198,3 +198,4 @@ export default function Lessons() {
     </div>
   );
 }
+// S.Sultonov

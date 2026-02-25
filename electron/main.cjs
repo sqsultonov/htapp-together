@@ -602,3 +602,4 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+// S.Sultonov

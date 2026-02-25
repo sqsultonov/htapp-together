@@ -139,3 +139,4 @@ export function isImageString(str: string): boolean {
     /\.(png|jpe?g|gif|webp|svg|bmp)(\?.*)?$/i.test(lower)
   );
 }
+// S.Sultonov

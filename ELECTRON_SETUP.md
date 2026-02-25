@@ -88,3 +88,4 @@ electron\build.bat
 
 - **Database:** `%APPDATA%/htapp-electron/htapp.db`
 - **Fayllar:** `%APPDATA%/htapp-electron/storage/`
+<!-- S.Sultonov -->

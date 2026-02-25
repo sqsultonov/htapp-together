@@ -47,3 +47,4 @@ echo ""
 echo "Your installer is in: release folder"
 echo "=========================================="
 exit 0
+# S.Sultonov

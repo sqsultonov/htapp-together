@@ -60,3 +60,4 @@ echo Your EXE installer is in: release folder
 echo ==========================================
 echo.
 pause
+REM S.Sultonov

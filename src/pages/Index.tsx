@@ -151,3 +151,4 @@ const Index = () => {
 };
 
 export default Index;
+// S.Sultonov

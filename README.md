@@ -31,3 +31,4 @@ chmod +x electron/build.sh
 ## Ma'lumotlar qayerda saqlanadi?
 - Database: Electron userData ichida `htapp.db`
 - Fayllar: Electron userData ichida `storage/`
+<!-- S.Sultonov -->
